@@ -42,25 +42,10 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 
 		LineIterator it = FileUtils.lineIterator(new File("trades.json"), "UTF-8");
 		long s = System.currentTimeMillis();
+		
+		//create  a grouping of stockname-> List of all trades for particula stock
 		Map<String, TreeSet<BarOHLC>> nameObjectMap =  new HashMap<>();
-
-/*
-		for (int i = 0; i < 100; i++) {
-			CompletableFuture.runAsync(()->{
-				try {
-					if (it.hasNext()) {
-						ObjectMapper objectMapper = new ObjectMapper();
-						String line = it.nextLine();
-						BarOHLC barOHLC  = objectMapper.readValue(line,BarOHLC.class);
-						barOHLCS.add(barOHLC);
-					}
-				}catch (Exception e){
-				}
-			},executorService);
-		}
-		long e = System.currentTimeMillis();
-
-		System.out.println(e-s);*/
+		
 
 		while (it.hasNext()) {
 			SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy hh:mm:ss:SSSSSSS");
@@ -76,11 +61,9 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 		}
 
 			LineIterator.closeQuietly(it);
-
-
-
-
-		List<CompletableFuture<List<BarOutputOHLC>>> futureList = new ArrayList<>();
+		//start--------------------------------
+        // below code is just to test one stock and that too take first 100 trades only . 
+        // Running for all stocks or even one with all thousands of trade take too much time to get result
 
 		Map<String,List<BarOutputOHLC>> outputMap = new HashMap<>();
         Collection<BarOHLC> t = nameObjectMap.get("XXBTZUSD");
@@ -97,8 +80,9 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
         nameObjectMap.clear();
        nameObjectMap.put("XXBTZUSD",temp);
 
+//end -------------------------------------
 
-
+        //here take each stock in map, extract list of trades for this stock and generate required output List 
         nameObjectMap.keySet().stream()
                 .map(s1->CompletableFuture.supplyAsync(() -> processBarData(nameObjectMap.get(s1)),executorService))
                 .map(future-> future.thenApply(list->outputMap.putIfAbsent(list.get(0).getSymbol(),list) ))
@@ -106,10 +90,15 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
                 .forEach(CompletableFuture::join);
 
 		outputMap.get("XXBTZUSD").forEach(System.out::println);
-
-		//executorService.shutdown();
+		
 	}
 
+    /**
+     * This method takes set of trades for a particular stock and generate output List as mentioned in problem
+     * This is the main method of interest
+     * @param barOHLCS
+     * @return
+     */
 	private  List<BarOutputOHLC> processBarData(TreeSet<BarOHLC> barOHLCS) {
 
 		//Date barTime = barOHLCS.first().getTS2();
