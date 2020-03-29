@@ -73,11 +73,11 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 			TreeSet<BarOHLC> temp = new TreeSet<>(t);
 			int i = 0;
 			Iterator<BarOHLC> iterator = temp.iterator();
-			/*while (iterator.hasNext()) {
+			while (iterator.hasNext()) {
 				iterator.next();
 				if (++i > 100)
 					iterator.remove();
-			}*/
+			}
 			nameObjectMap.put(stockName, temp);
 			t.clear();
 		}
@@ -114,6 +114,11 @@ class TaskRunner {
 		double v = 0.0;
 		double h = 0.0;
 		double l = Integer.MAX_VALUE;
+		double o =0.0;
+		if (barOHLCS.first()!=null) {
+			//set initial open for first candle
+			o= barOHLCS.first().getP();
+		}
 		BarOutputOHLC lastBarOutputOHLC =null;
 		int size=0;
 		for (BarOHLC barOHLC : barOHLCS) {
@@ -130,7 +135,7 @@ class TaskRunner {
 						.symbol(barOHLC.getSym())
 						.event("ohlc_notify")
 						.volume(v)
-						.o(h)
+						.o(o)
 						.h(h)
 						.l(l)
 						//edge case if this is last trade in 15 second window.Set close
@@ -144,17 +149,20 @@ class TaskRunner {
 				barStartPlus15Seconds = barStartPlus15Seconds.plusSeconds(15);
 				bar_num++;
 			}
-			if (instant.isAfter(barStartPlus15Seconds))
+			if (instant.isAfter(barStartPlus15Seconds)) {
 				barStartPlus15Seconds = barStartPlus15Seconds.plusSeconds(15);
+			}
 			if (lastBarOutputOHLC!=null && lastTickInBar!=null)
 				lastBarOutputOHLC.setC(lastTickInBar.getP());
-
+			
+			//set open equal to first trade price in next 15 sec candle
+			o=barOHLC.getP();
 			ohlcs.add(BarOutputOHLC.builder()
 					.bar_num(++bar_num)
 					.symbol(barOHLC.getSym())
 					.event("ohlc_notify")
 					.volume(v)
-					.o(barOHLC.getP())
+					.o(o)
 					.h(barOHLC.getP())
 					.l(barOHLC.getP())
 					.c(0.0)
