@@ -11,7 +11,6 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
@@ -86,7 +85,7 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 
         //here take each stock in map, extract list of trades for this stock and generate required output List
         nameObjectMap.keySet().stream()
-                .map(s1->CompletableFuture.supplyAsync(() -> processBarData(nameObjectMap.get(s1)),executorService))
+                .map(s1->CompletableFuture.supplyAsync(() -> new TaskRunner().processBarData(nameObjectMap.get(s1)),executorService))
                 .map(future-> future.thenApply(list->outputMap.putIfAbsent(list.get(0).getSymbol(),list) ))
                 .collect(Collectors.toList())
                 .forEach(CompletableFuture::join);
@@ -94,14 +93,17 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 		outputMap.values().forEach(lst-> lst.forEach(System.out::println));
 
 	}
+}
 
-    /**
-     * This method takes set of trades for a particular stock and generate output List as mentioned in problem
-     * This is the main method of interest
-     * @param barOHLCS
-     * @return
-     */
-	private  static  List<BarOutputOHLC> processBarData(TreeSet<BarOHLC> barOHLCS) {
+
+class TaskRunner {
+	/**
+	 * This method takes set of trades for a particular stock and generate output List as mentioned in problem
+	 * This is the main method of interest
+	 * @param barOHLCS
+	 * @return
+	 */
+	public  List<BarOutputOHLC> processBarData(TreeSet<BarOHLC> barOHLCS) {
 
 		Instant barStartPlus15Seconds = barOHLCS.first().getTS2().plusSeconds(15);
 		int bar_num = 1;
@@ -116,26 +118,26 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 		int size=0;
 		for (BarOHLC barOHLC : barOHLCS) {
 			++size;
-		    h =  Math.max(h,barOHLC.getP());
-		    l = Math.min(l,barOHLC.getP());
-		    v+=barOHLC.getQ();
+			h =  Math.max(h,barOHLC.getP());
+			l = Math.min(l,barOHLC.getP());
+			v+=barOHLC.getQ();
 			Instant instant = barOHLC.getTS2();
-            lastBarOutputOHLC = ohlcs.size()==0?null:ohlcs.get(ohlcs.size() - 1);
+			lastBarOutputOHLC = ohlcs.size()==0?null:ohlcs.get(ohlcs.size() - 1);
 
 			if (instant.isBefore(barStartPlus15Seconds) || instant.equals(barStartPlus15Seconds)){
-			   ohlcs.add( BarOutputOHLC.builder()
-                        .bar_num(bar_num)
-                        .symbol(barOHLC.getSym())
-					   .event("ohlc_notify")
-                        .volume(v)
-                        .o(h)
-                        .h(h)
-                        .l(l)
-					   //edge case if this is last trade in 15 second window.Set close
-                        .c(size==barOHLCS.size()?barOHLC.getP():0.0)
-                        .build());
-			   lastTickInBar=barOHLC;
-			   continue;
+				ohlcs.add( BarOutputOHLC.builder()
+						.bar_num(bar_num)
+						.symbol(barOHLC.getSym())
+						.event("ohlc_notify")
+						.volume(v)
+						.o(h)
+						.h(h)
+						.l(l)
+						//edge case if this is last trade in 15 second window.Set close
+						.c(size==barOHLCS.size()?barOHLC.getP():0.0)
+						.build());
+				lastTickInBar=barOHLC;
+				continue;
 			}
 
 			while (instant.isAfter(barStartPlus15Seconds.plusSeconds(15))){
@@ -145,24 +147,24 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 			if (instant.isAfter(barStartPlus15Seconds))
 				barStartPlus15Seconds = barStartPlus15Seconds.plusSeconds(15);
 			if (lastBarOutputOHLC!=null && lastTickInBar!=null)
-			lastBarOutputOHLC.setC(lastTickInBar.getP());
+				lastBarOutputOHLC.setC(lastTickInBar.getP());
 
 			ohlcs.add(BarOutputOHLC.builder()
-                    .bar_num(++bar_num)
-                    .symbol(barOHLC.getSym())
+					.bar_num(++bar_num)
+					.symbol(barOHLC.getSym())
 					.event("ohlc_notify")
-                    .volume(v)
-                    .o(barOHLC.getP())
-                    .h(barOHLC.getP())
-                    .l(barOHLC.getP())
-                    .c(0.0)
-                    .build()
-            );
+					.volume(v)
+					.o(barOHLC.getP())
+					.h(barOHLC.getP())
+					.l(barOHLC.getP())
+					.c(0.0)
+					.build()
+			);
 
 			lastTickInBar = barOHLC;
 
-        }
+		}
 
-    return ohlcs;
+		return ohlcs;
 	}
 }
