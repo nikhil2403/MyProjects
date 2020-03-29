@@ -63,27 +63,22 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
 			LineIterator.closeQuietly(it);
 
 		Map<String,List<BarOutputOHLC>> outputMap = new HashMap<>();
-
-		//start--------------------------------
-        // below code is just to test one stock and that too take first 100 trades only .
-        // Running for all stocks or even one with all thousands of trade take too much time to get result
-
+        
 		for (String stockName : args) {
 			Collection<BarOHLC> t = nameObjectMap.get(stockName);
 			TreeSet<BarOHLC> temp = new TreeSet<>(t);
 			int i = 0;
 			Iterator<BarOHLC> iterator = temp.iterator();
-			while (iterator.hasNext()) {
+			/*while (iterator.hasNext()) {
 				iterator.next();
 				if (++i > 100)
 					iterator.remove();
-			}
+			}*/
 			nameObjectMap.put(stockName, temp);
 			t.clear();
 		}
-//end -------------------------------------
 
-        //here take each stock in map, extract list of trades for this stock and generate required output List
+        //here take each stock in map, extract set of trades for this stock and generate required output List
         nameObjectMap.keySet().stream()
                 .map(s1->CompletableFuture.supplyAsync(() -> new TaskRunner().processBarData(nameObjectMap.get(s1)),executorService))
                 .map(future-> future.thenApply(list->outputMap.putIfAbsent(list.get(0).getSymbol(),list) ))
@@ -91,6 +86,8 @@ public class UpstoxBarchartApplication implements CommandLineRunner {
                 .forEach(CompletableFuture::join);
 
 		outputMap.values().forEach(lst-> lst.forEach(System.out::println));
+		
+		//outputMap can be used to send the data to ui to generatre visual candles
 
 	}
 }
