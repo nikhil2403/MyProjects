@@ -2,7 +2,7 @@
 
 
 ## STEPS TO RUN UPSTOX_BARCHART
-1. git clone https://github.com/nikhil2403/MyProjects
+1. git clone https://github.com/nikhil2403/MyProjects.git
 2. cd into upstox-barchart
 3. run command -->   mvn spring-boot:run -Dspring-boot.run.arguments="STOCK1 STOCK2 STOCK3"
 ## output will be displayed on terminal
